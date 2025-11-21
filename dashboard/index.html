@@ -139,6 +139,13 @@
             gap: 2px;
             overflow-x: auto;
             padding: 10px 0;
+            min-height: 120px;
+        }
+
+        .heatmap-wrapper {
+            display: flex;
+            flex-direction: column;
+            min-width: 100%;
         }
 
         .heatmap-week {
@@ -728,7 +735,17 @@
 
             async loadActivity() {
                 try {
-                    const response = await this.api.fetchActivity(365);
+                    // Show last 90 days instead of 365 so recent activity is visible
+                    const response = await this.api.fetchActivity(90);
+                    const activity = response.activity.filter(day => day.count > 0);
+                    
+                    if (activity.length === 0) {
+                        console.log('No activity found in last 90 days');
+                        this.heatmapContainer.style.display = 'none';
+                        return;
+                    }
+                    
+                    console.log(`Found ${activity.length} days with activity`);
                     this.renderHeatmap(response.activity);
                     this.heatmapContainer.style.display = 'block';
                 } catch (error) {
@@ -749,18 +766,29 @@
 
             renderHeatmap(activityData) {
                 if (!activityData || activityData.length === 0) {
+                    console.log('No activity data to render');
                     this.heatmapContainer.style.display = 'none';
                     return;
                 }
 
                 // Group data by weeks
                 const weeks = this.groupActivityByWeeks(activityData);
+                console.log(`Rendering ${weeks.length} weeks of heatmap data`);
                 
-                this.heatmap.innerHTML = weeks.map(week => 
-                    `<div class="heatmap-week">${this.renderWeek(week)}</div>`
-                ).join('');
+                if (weeks.length === 0) {
+                    console.log('No weeks to display');
+                    this.heatmapContainer.style.display = 'none';
+                    return;
+                }
+                
+                this.heatmap.innerHTML = weeks.map((week, index) => {
+                    const weekHtml = this.renderWeek(week);
+                    console.log(`Week ${index}: ${week.filter(d => d).length} days`);
+                    return `<div class="heatmap-week">${weekHtml}</div>`;
+                }).join('');
 
                 this.addHeatmapTooltips();
+                console.log('Heatmap rendering complete');
             }
 
             groupActivityByWeeks(activityData) {
