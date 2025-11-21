@@ -71,7 +71,7 @@ async def health():
 @app.get("/api/v1/chats", response_model=List[Chat])
 async def list_chats(
     workspace: Optional[str] = Query(None, description="Filter by workspace path"),
-    limit: int = Query(20, ge=1, le=100, description="Maximum number of results"),
+    limit: int = Query(20, ge=1, le=1000, description="Maximum number of results"),
     offset: int = Query(0, ge=0, description="Number of results to skip"),
     refresh: bool = Query(False, description="Force refresh of chat index")
 ):
