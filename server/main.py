@@ -1,9 +1,10 @@
 """FastAPI application for Kimi CLI Chat History API."""
 
 import logging
-from typing import List, Optional
+from typing import List, Optional, Dict
 from pathlib import Path
 import json
+from datetime import datetime, timedelta
 
 from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -195,6 +196,79 @@ async def list_workspaces(refresh: bool = Query(False, description="Force refres
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
+@app.get("/api/v1/activity", response_model=Dict[str, List[dict]])
+async def get_activity(
+    days: int = Query(365, ge=1, le=1095, description="Number of days to include")
+):
+    """
+    Get activity heatmap data for GitHub-style contribution graph.
+    
+    Args:
+        days: Number of days to look back (default: 365 days = 1 year)
+    
+    Returns:
+        Dictionary with activity data by date and workspace
+    """
+    try:
+        chats = chat_service.get_all_chats()
+        
+        # Generate date range
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=days)
+        
+        # Initialize activity data structure
+        activity_by_date = {}
+        
+        # Process all chats
+        for chat in chats:
+            chat_date = chat.created.date()
+            
+            # Skip chats outside the date range
+            if chat_date < start_date.date() or chat_date > end_date.date():
+                continue
+            
+            date_key = chat_date.isoformat()
+            
+            if date_key not in activity_by_date:
+                activity_by_date[date_key] = {
+                    'date': date_key,
+                    'count': 0,
+                    'chats': []
+                }
+            
+            activity_by_date[date_key]['count'] += 1
+            activity_by_date[date_key]['chats'].append({
+                'id': chat.id,
+                'name': chat.name,
+                'workspace': chat.workspace.split('/').pop()
+            })
+        
+        # Fill in missing dates with zeros
+        current_date = start_date.date()
+        while current_date <= end_date.date():
+            date_key = current_date.isoformat()
+            if date_key not in activity_by_date:
+                activity_by_date[date_key] = {
+                    'date': date_key,
+                    'count': 0,
+                    'chats': []
+                }
+            current_date += timedelta(days=1)
+        
+        # Convert to sorted list
+        sorted_activity = sorted(
+            activity_by_date.values(),
+            key=lambda x: x['date']
+        )
+        
+        logger.info(f"Generated activity data for {len(sorted_activity)} days")
+        return {'activity': sorted_activity}
+    
+    except Exception as e:
+        logger.error(f"Error generating activity data: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
 @app.get("/api/v1/search", response_model=List[SearchResult])
 async def search_chats(
     q: str = Query(..., description="Search query"),
@@ -218,6 +292,47 @@ async def search_chats(
         return results
     except Exception as e:
         logger.error(f"Error searching chats: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
+@app.get("/api/v1/stats", response_model=Stats)
+async def get_stats():
+    """
+    Get overall statistics about the chat history.
+    
+    Returns:
+        Stats object with totals and date ranges
+    """
+    try:
+        chats = chat_service.get_all_chats()
+        
+        if not chats:
+            return Stats(
+                total_chats=0,
+                total_messages=0,
+                total_workspaces=0,
+                date_range_start=None,
+                date_range_end=None
+            )
+        
+        total_chats = len(chats)
+        total_messages = sum(chat.message_count for chat in chats)
+        total_workspaces = len({chat.workspace for chat in chats})
+        
+        dates = [chat.created for chat in chats]
+        date_range_start = min(dates) if dates else None
+        date_range_end = max(dates) if dates else None
+        
+        return Stats(
+            total_chats=total_chats,
+            total_messages=total_messages,
+            total_workspaces=total_workspaces,
+            date_range_start=date_range_start,
+            date_range_end=date_range_end
+        )
+    
+    except Exception as e:
+        logger.error(f"Error generating stats: {e}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 

@@ -119,6 +119,104 @@
             color: #24292e;
         }
 
+        .heatmap-container {
+            margin: 20px 0;
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .heatmap-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #24292e;
+        }
+
+        .heatmap {
+            display: flex;
+            gap: 2px;
+            overflow-x: auto;
+            padding: 10px 0;
+        }
+
+        .heatmap-week {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .heatmap-day {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+            background: #ebedf0;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .heatmap-day:hover {
+            stroke: #1f232826;
+            stroke-width: 1px;
+        }
+
+        .heatmap-day.level-1 { background: #9be9a8; }
+        .heatmap-day.level-2 { background: #40c463; }
+        .heatmap-day.level-3 { background: #30a14e; }
+        .heatmap-day.level-4 { background: #216e39; }
+
+        .heatmap-tooltip {
+            position: fixed;
+            background: #1f2328;
+            color: #f6f8fa;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            z-index: 1000;
+            pointer-events: none;
+            white-space: nowrap;
+            display: none;
+        }
+
+        .heatmap-tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #1f2328 transparent transparent transparent;
+        }
+
+        .heatmap-legend {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 15px;
+            font-size: 12px;
+            color: #57606a;
+        }
+
+        .heatmap-legend-bars {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .heatmap-legend-bar {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+            background: #ebedf0;
+        }
+
+        .heatmap-legend-bar.level-1 { background: #9be9a8; }
+        .heatmap-legend-bar.level-2 { background: #40c463; }
+        .heatmap-legend-bar.level-3 { background: #30a14e; }
+        .heatmap-legend-bar.level-4 { background: #216e39; }
+
         .chat-list {
             flex: 1;
             overflow-y: auto;
@@ -444,6 +542,22 @@
                 </select>
             </div>
 
+            <div class="heatmap-container" id="heatmapContainer" style="display: none;">
+                <div class="heatmap-title">Activity Overview</div>
+                <div class="heatmap" id="heatmap"></div>
+                <div class="heatmap-legend">
+                    <span>Less</span>
+                    <div class="heatmap-legend-bars">
+                        <div class="heatmap-legend-bar"></div>
+                        <div class="heatmap-legend-bar level-1"></div>
+                        <div class="heatmap-legend-bar level-2"></div>
+                        <div class="heatmap-legend-bar level-3"></div>
+                        <div class="heatmap-legend-bar level-4"></div>
+                    </div>
+                    <span>More</span>
+                </div>
+            </div>
+
             <div class="stats" id="stats">
                 <div class="stats-item">
                     <strong>Total Chats:</strong> <span id="totalChats">0</span>
@@ -520,6 +634,14 @@
                 return this._fetch('/api/v1/refresh', { method: 'POST' });
             }
 
+            async fetchActivity(days = 365) {
+                return this._fetch(`/api/v1/activity?days=${days}`);
+            }
+
+            async fetchStats() {
+                return this._fetch('/api/v1/stats');
+            }
+
             async _fetch(endpoint, options = {}) {
                 const url = `${this.baseUrl}${endpoint}`;
                 const response = await fetch(url, {
@@ -566,6 +688,8 @@
                 this.closeModal = document.getElementById('closeModal');
                 this.copySessionId = document.getElementById('copySessionId');
                 this.exportMarkdown = document.getElementById('exportMarkdown');
+            this.heatmapContainer = document.getElementById('heatmapContainer');
+            this.heatmap = document.getElementById('heatmap');
             }
 
             bindEvents() {
@@ -591,11 +715,158 @@
                     // Load chats
                     await this.loadChats();
                     
-                    // Update stats
-                    this.updateStats();
+                    // Load activity heatmap
+                    await this.loadActivity();
+                    
+                    // Load and update stats
+                    await this.loadStats();
                 } catch (error) {
                     console.error('Failed to load data:', error);
                     this.showError('Failed to load chat history. Make sure the API server is running.');
+                }
+            }
+
+            async loadActivity() {
+                try {
+                    const response = await this.api.fetchActivity(365);
+                    this.renderHeatmap(response.activity);
+                    this.heatmapContainer.style.display = 'block';
+                } catch (error) {
+                    console.error('Failed to load activity data:', error);
+                    this.heatmapContainer.style.display = 'none';
+                }
+            }
+
+            async loadStats() {
+                try {
+                    const stats = await this.api.fetchStats();
+                    this.updateStats(stats);
+                } catch (error) {
+                    console.error('Failed to load stats:', error);
+                    this.updateStats(); // Update with basic stats
+                }
+            }
+
+            renderHeatmap(activityData) {
+                if (!activityData || activityData.length === 0) {
+                    this.heatmapContainer.style.display = 'none';
+                    return;
+                }
+
+                // Group data by weeks
+                const weeks = this.groupActivityByWeeks(activityData);
+                
+                this.heatmap.innerHTML = weeks.map(week => 
+                    `<div class="heatmap-week">${this.renderWeek(week)}</div>`
+                ).join('');
+
+                this.addHeatmapTooltips();
+            }
+
+            groupActivityByWeeks(activityData) {
+                const weeks = [];
+                let currentWeek = [];
+                
+                // Start from Monday
+                const startDate = new Date(activityData[0].date);
+                const dayOfWeek = startDate.getDay();
+                const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+                startDate.setDate(startDate.getDate() - daysToMonday);
+                
+                let currentDate = new Date(startDate);
+                let currentDataIndex = 0;
+                
+                while (currentDataIndex < activityData.length) {
+                    const dayData = activityData[currentDataIndex];
+                    const dayDate = new Date(dayData.date);
+                    
+                    if (dayDate.toDateString() === currentDate.toDateString()) {
+                        currentWeek.push(dayData);
+                        currentDataIndex++;
+                    } else {
+                        currentWeek.push({ date: currentDate.toISOString().split('T')[0], count: 0, chats: [] });
+                    }
+                    
+                    currentDate.setDate(currentDate.getDate() + 1);
+                    
+                    if (currentWeek.length === 7) {
+                        weeks.push(currentWeek);
+                        currentWeek = [];
+                    }
+                }
+                
+                return weeks;
+            }
+
+            renderWeek(week) {
+                return week.map(day => {
+                    const level = this.getHeatmapLevel(day.count);
+                    const date = new Date(day.date).toLocaleDateString();
+                    const count = day.count;
+                    const chats = day.chats.map(c => `${c.name} (${c.workspace})`).join('\n');
+                    
+                    return `<div class="heatmap-day level-${level}" 
+                                data-date="${date}" 
+                                data-count="${count}" 
+                                data-chats="${this.escapeHtml(chats)}"></div>`;
+                }).join('');
+            }
+
+            getHeatmapLevel(count) {
+                if (count === 0) return 0;
+                if (count === 1) return 1;
+                if (count === 2) return 2;
+                if (count <= 4) return 3;
+                return 4;
+            }
+
+            addHeatmapTooltips() {
+                const tooltip = document.getElementById('heatmapTooltip') || this.createTooltip();
+                const days = this.heatmap.querySelectorAll('.heatmap-day');
+                
+                days.forEach(day => {
+                    day.addEventListener('mouseenter', (e) => {
+                        const date = e.target.dataset.date;
+                        const count = e.target.dataset.count;
+                        const chats = e.target.dataset.chats;
+                        
+                        let tooltipText = `${date}: ${count} conversation${count === '1' ? '' : 's'}`;
+                        if (chats) {
+                            const chatList = chats.split('\\n').slice(0, 3).join('\\n');
+                            const more = chats.split('\\n').length > 3 ? `\\n+${chats.split('\\n').length - 3} more` : '';
+                            tooltipText += `\\n\\n${chatList}${more}`;
+                        }
+                        
+                        tooltip.textContent = tooltipText;
+                        tooltip.style.display = 'block';
+                        
+                        const rect = e.target.getBoundingClientRect();
+                        tooltip.style.left = (rect.left + rect.width / 2) + 'px';
+                        tooltip.style.top = (rect.top - 40) + 'px';
+                    });
+                    
+                    day.addEventListener('mouseleave', () => {
+                        tooltip.style.display = 'none';
+                    });
+                });
+            }
+
+            createTooltip() {
+                const tooltip = document.createElement('div');
+                tooltip.className = 'heatmap-tooltip';
+                tooltip.id = 'heatmapTooltip';
+                document.body.appendChild(tooltip);
+                return tooltip;
+            }
+
+            updateStats(stats = null) {
+                if (stats) {
+                    this.statsTotalChats.textContent = stats.total_chats || 0;
+                    this.statsTotalWorkspaces.textContent = stats.total_workspaces || 0;
+                } else {
+                    // Basic stats without API call
+                    this.statsTotalChats.textContent = this.chats.length;
+                    this.statsTotalWorkspaces.textContent = this.workspaces.length;
                 }
             }
 
