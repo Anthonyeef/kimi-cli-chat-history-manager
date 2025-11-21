@@ -1,0 +1,226 @@
+"""FastAPI application for Kimi CLI Chat History API."""
+
+import logging
+from typing import List, Optional
+from pathlib import Path
+
+from fastapi import FastAPI, Query, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+
+try:
+    from .api.models import Chat, Message, SearchResult, Workspace, ActivityData, Stats
+    from .database.jsonl_reader import read_jsonl
+    from .services.chat_service import chat_service
+    from .config import settings
+except ImportError:
+    from api.models import Chat, Message, SearchResult, Workspace, ActivityData, Stats
+    from database.jsonl_reader import read_jsonl
+    from services.chat_service import chat_service
+    from config import settings
+
+# Configure logging
+logging.basicConfig(
+    level=getattr(logging, settings.log_level),
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
+
+# Create FastAPI app
+app = FastAPI(
+    title="Kimi CLI Chat History API",
+    description="API for searching and managing Kimi CLI conversation history",
+    version="1.0.0"
+)
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/")
+async def root():
+    """Root endpoint with API information."""
+    return {
+        "name": "Kimi CLI Chat History API",
+        "version": "1.0.0",
+        "docs": "/docs",
+        "endpoints": {
+            "health": "/api/v1/health",
+            "chats": "/api/v1/chats",
+            "chat_detail": "/api/v1/chats/{id}",
+            "workspaces": "/api/v1/workspaces",
+            "search": "/api/v1/search",
+            "refresh": "/api/v1/refresh"
+        }
+    }
+
+
+@app.get("/api/v1/health")
+async def health():
+    """Health check endpoint."""
+    return {"status": "ok", "service": "kimi-chat-history-api"}
+
+
+@app.get("/api/v1/chats", response_model=List[Chat])
+async def list_chats(
+    workspace: Optional[str] = Query(None, description="Filter by workspace path"),
+    limit: int = Query(20, ge=1, le=100, description="Maximum number of results"),
+    offset: int = Query(0, ge=0, description="Number of results to skip"),
+    refresh: bool = Query(False, description="Force refresh of chat index")
+):
+    """
+    List chat sessions with optional filtering.
+
+    Args:
+        workspace: Filter by workspace path
+        limit: Maximum number of results to return
+        offset: Number of results to skip (for pagination)
+        refresh: Force refresh the chat index
+
+    Returns:
+        List of Chat objects
+    """
+    try:
+        chats = chat_service.get_all_chats(force_refresh=refresh)
+
+        # Filter by workspace if specified
+        if workspace:
+            chats = [c for c in chats if c.workspace == workspace]
+
+        # Apply pagination
+        total = len(chats)
+        chats = chats[offset:offset + limit]
+
+        logger.info(f"Returned {len(chats)} chats (total: {total}, offset: {offset}, limit: {limit})")
+        return chats
+
+    except Exception as e:
+        logger.error(f"Error listing chats: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
+@app.get("/api/v1/chats/{chat_id}", response_model=List[Message])
+async def get_chat_detail(chat_id: str):
+    """
+    Get details of a specific chat session.
+
+    Args:
+        chat_id: Session ID (from Chat.id)
+
+    Returns:
+        List of Message objects in the conversation
+    """
+    try:
+        # First verify the chat exists
+        chat = chat_service.get_chat_by_id(chat_id)
+        if not chat:
+            raise HTTPException(status_code=404, detail=f"Chat not found: {chat_id}")
+
+        # Read messages from JSONL file
+        messages = read_jsonl(Path(chat.file_path))
+
+        # Convert to Message objects
+        result = []
+        for msg in messages:
+            result.append(Message(
+                role=msg.get("role", "unknown"),
+                content=msg.get("content", ""),
+                tool_calls=msg.get("tool_calls"),
+                tool_call_id=msg.get("tool_call_id"),
+                timestamp=None  # We don't have timestamps in JSONL
+            ))
+
+        logger.info(f"Returned {len(result)} messages for chat {chat_id}")
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting chat detail for {chat_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
+@app.get("/api/v1/workspaces", response_model=List[Workspace])
+async def list_workspaces(refresh: bool = Query(False, description="Force refresh of chat index")):
+    """
+    List all workspaces with session counts.
+
+    Args:
+        refresh: Force refresh the chat index
+
+    Returns:
+        List of Workspace objects
+    """
+    try:
+        chats = chat_service.get_all_chats(force_refresh=refresh)
+
+        # Group chats by workspace
+        workspace_dict = {}
+        for chat in chats:
+            if chat.workspace not in workspace_dict:
+                workspace_dict[chat.workspace] = {
+                    "path": chat.workspace,
+                    "hash": chat.workspace_hash,
+                    "sessions": []
+                }
+            workspace_dict[chat.workspace]["sessions"].append(chat.id)
+
+        # Convert to Workspace objects
+        workspaces = []
+        for path, data in workspace_dict.items():
+            # Get last session from metadata if possible
+            last_session = None
+            name = Path(path).name
+
+            workspaces.append(Workspace(
+                name=name,
+                path=path,
+                hash=data["hash"],
+                last_session_id=last_session,
+                session_count=len(data["sessions"])
+            ))
+
+        logger.info(f"Returned {len(workspaces)} workspaces")
+        return workspaces
+
+    except Exception as e:
+        logger.error(f"Error listing workspaces: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
+@app.post("/api/v1/refresh")
+async def refresh_chats():
+    """Force refresh the chat index."""
+    try:
+        chat_service.refresh_cache()
+        return {"status": "ok", "message": "Chat index refreshed successfully"}
+    except Exception as e:
+        logger.error(f"Error refreshing chat index: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
+# Add startup event to initialize the cache
+@app.on_event("startup")
+async def startup_event():
+    """Initialize the chat cache on startup."""
+    logger.info("Starting Kimi Chat History API...")
+    logger.info(f"Kimi data directory: {settings.kimi_base_dir}")
+    chat_service.refresh_cache()
+    logger.info("Application started successfully")
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(
+        "main:app",
+        host=str(settings.host),
+        port=int(settings.port),
+        reload=True,
+        log_level="info"
+    )
