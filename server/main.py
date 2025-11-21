@@ -3,6 +3,7 @@
 import logging
 from typing import List, Optional
 from pathlib import Path
+import json
 
 from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -191,6 +192,32 @@ async def list_workspaces(refresh: bool = Query(False, description="Force refres
 
     except Exception as e:
         logger.error(f"Error listing workspaces: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
+@app.get("/api/v1/search", response_model=List[SearchResult])
+async def search_chats(
+    q: str = Query(..., description="Search query"),
+    search_messages: bool = Query(False, description="Search in message content, not just chat names"),
+    workspace: Optional[str] = Query(None, description="Filter by workspace path")
+):
+    """
+    Search chat sessions by query.
+
+    Args:
+        q: Search query string
+        search_messages: If True, search in full message content. If False, search only in chat names.
+        workspace: Optional workspace filter
+
+    Returns:
+        List of SearchResult objects
+    """
+    try:
+        results = chat_service.search_chats(q, search_messages=search_messages, workspace=workspace)
+        logger.info(f"Search for '{q}' (search_messages={search_messages}) returned {len(results)} results")
+        return results
+    except Exception as e:
+        logger.error(f"Error searching chats: {e}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 

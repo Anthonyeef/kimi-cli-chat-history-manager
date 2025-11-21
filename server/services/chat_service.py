@@ -8,12 +8,12 @@ from typing import List, Optional, Dict, Any
 import json
 
 try:
-    from ..database.jsonl_reader import read_jsonl, get_first_user_message
-    from ..api.models import Chat
+    from ..database.jsonl_reader import read_jsonl, get_first_user_message, extract_searchable_text
+    from ..api.models import Chat, SearchResult, SearchMatch
     from ..config import settings
 except ImportError:
-    from database.jsonl_reader import read_jsonl, get_first_user_message
-    from api.models import Chat
+    from database.jsonl_reader import read_jsonl, get_first_user_message, extract_searchable_text
+    from api.models import Chat, SearchResult, SearchMatch
     from config import settings
 
 logger = logging.getLogger(__name__)
@@ -233,6 +233,76 @@ class ChatService:
                     return path
 
         return f"Unknown Workspace ({workspace_hash[:8]}...)"
+
+    def search_chats(self, query: str, search_messages: bool = False, workspace: Optional[str] = None) -> List[SearchResult]:
+        """
+        Search chats by query.
+
+        Args:
+            query: Search string
+            search_messages: If True, search in message content. If False, search only chat names.
+            workspace: Optional workspace filter
+
+        Returns:
+            List of SearchResult objects
+        """
+        # Use already imported modules (no local imports needed)
+
+        all_chats = self.get_all_chats()
+        results = []
+
+        # Filter by workspace first if specified
+        if workspace:
+            all_chats = [c for c in all_chats if c.workspace == workspace]
+
+        if not search_messages:
+            # Fast path: search only in chat names
+            matching_chats = [c for c in all_chats if query.lower() in c.name.lower()]
+            for chat in matching_chats:
+                results.append(SearchResult(
+                    chat=chat,
+                    matches=[],
+                    match_count=0
+                ))
+            return results
+
+        # Deep search: scan all session files for message content
+        for chat in all_chats:
+            try:
+                messages = read_jsonl(Path(chat.file_path))
+                matches = []
+
+                for idx, msg in enumerate(messages):
+                    # Check if query matches in message content
+                    content = msg.get("content", "")
+                    text = extract_searchable_text(content)
+
+                    if query.lower() in text.lower():
+                        # Create preview with truncation
+                        preview = text[:100] + "..." if len(text) > 100 else text
+
+                        # Simple highlighting (just for preview)
+                        highlighted = preview.replace(query, f"**{query}**")
+
+                        matches.append(SearchMatch(
+                            message_index=idx,
+                            role=msg.get("role", "unknown"),
+                            preview=preview,
+                            highlighted=highlighted
+                        ))
+
+                if matches:
+                    results.append(SearchResult(
+                        chat=chat,
+                        matches=matches,
+                        match_count=len(matches)
+                    ))
+
+            except Exception as e:
+                logger.warning(f"Error searching in chat {chat.id}: {e}")
+                continue
+
+        return results
 
     def _truncate(self, text: str, max_length: int) -> str:
         """Truncate text to maximum length."""
