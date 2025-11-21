@@ -1079,19 +1079,6 @@
                 `;
             }
 
-            async showChatDetail(chat) {
-                this.currentChat = chat;
-                this.modalTitle.textContent = chat.name;
-                this.messageViewer.innerHTML = '<div class="loading"><div class="spinner"></div>Loading conversation...</div>';
-                this.modal.classList.add('active');
-
-                try {
-                    const messages = await this.api.fetchChatDetail(chat.id);
-                    this.renderMessages(messages);
-                } catch (error) {
-                    console.error('Failed to load chat:', error);
-                    this.messageViewer.innerHTML = '<div class="no-results">Failed to load conversation</div>';
-                }
             }
 
             renderMessages(messages) {
