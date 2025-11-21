@@ -679,10 +679,20 @@
                 const route = parts[0];
                 
                 if (route === 'chat' && parts[1]) {
-                    this.showDetailView(parts[1]);
+                    // Don't call showDetailView directly - it needs async load
+                    this.showChatDetailById(parts[1]);
                 } else {
                     this.showListView();
                 }
+            }
+            
+            async showChatDetail(chat) {
+                if (!this.router) {
+                    console.error('Router not initialized!');
+                    return;
+                }
+                this.currentChat = chat;
+                this.router.navigateToDetail(chat.id);
             }
             
             navigateToDetail(chatId) {
@@ -1081,11 +1091,6 @@
 
             }
 
-            renderMessages(messages) {
-                this.messageViewer.innerHTML = messages
-                    .map(msg => this.renderMessage(msg))
-                    .join('');
-            }
 
             renderMessage(msg) {
                 const roleClass = msg.role === 'user' ? 'user' : msg.role === 'assistant' ? 'assistant' : 'tool';
