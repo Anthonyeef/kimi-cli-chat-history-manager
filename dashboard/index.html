@@ -742,14 +742,60 @@
                 this.searchInput.addEventListener('input', () => this.handleSearch());
                 this.searchMessages.addEventListener('change', () => this.handleSearch());
                 this.workspaceFilter.addEventListener('change', () => this.handleWorkspaceFilter());
-                this.closeModal.addEventListener('click', () => this.hideModal());
-                this.copySessionId.addEventListener('click', () => this.copyCurrentSessionId());
-                this.exportMarkdown.addEventListener('click', () => this.exportCurrentChat());
+                this.backButton.addEventListener('click', () => this.router.navigateToList());
+                this.copySessionId2.addEventListener('click', () => this.copyCurrentSessionId());
+                this.exportMarkdown2.addEventListener('click', () => this.exportCurrentChat());
+            }
+
+            // View visibility management
+            showListView() {
+                this.listView.style.display = 'grid';
+                document.title = 'Kimi Chat History';
+            }
+
+            hideListView() {
+                this.listView.style.display = 'none';
+            }
+
+            showDetailView() {
+                this.detailView.style.display = 'flex';
+            }
+
+            hideDetailView() {
+                this.detailView.style.display = 'none';
+                document.title = 'Kimi Chat History';
+            }
+
+            // New method to load chat by ID for router
+            async showChatDetailById(chatId) {
+                // First make sure chats are loaded
+                if (this.chats.length === 0) {
+                    await this.loadChats();
+                }
                 
-                // Close modal on backdrop click
-                this.modal.addEventListener('click', (e) => {
-                    if (e.target === this.modal) this.hideModal();
-                });
+                const chat = this.chats.find(c => c.id === chatId);
+                if (chat) {
+                    this.currentChat = chat;
+                    await this.renderDetailView();
+                } else {
+                    console.error('Chat not found:', chatId);
+                    this.router.navigateToList();
+                }
+            }
+
+            async renderDetailView() {
+                this.hideListView();
+                this.detailTitle.textContent = this.currentChat.name;
+                this.messageViewer2.innerHTML = '<div class="loading"><div class="spinner"></div>Loading conversation...</div>';
+                this.showDetailView();
+                
+                try {
+                    const messages = await this.api.fetchChatDetail(this.currentChat.id);
+                    this.messageViewer2.innerHTML = messages.map(msg => this.renderMessage(msg)).join('');
+                } catch (error) {
+                    console.error('Failed to load chat:', error);
+                    this.messageViewer2.innerHTML = '<div class="no-results">Failed to load conversation</div>';
+                }
             }
 
             async loadData() {
