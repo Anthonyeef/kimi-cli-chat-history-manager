@@ -735,17 +735,18 @@
 
             async loadActivity() {
                 try {
-                    // Show last 90 days instead of 365 so recent activity is visible
-                    const response = await this.api.fetchActivity(90);
+                    // Show just enough days to fit the container width (~60 days)
+                    const daysToShow = 60;  // ~8.5 weeks, fits in 300px container
+                    const response = await this.api.fetchActivity(daysToShow);
                     const activity = response.activity.filter(day => day.count > 0);
                     
                     if (activity.length === 0) {
-                        console.log('No activity found in last 90 days');
+                        console.log(`No activity found in last ${daysToShow} days`);
                         this.heatmapContainer.style.display = 'none';
                         return;
                     }
                     
-                    console.log(`Found ${activity.length} days with activity`);
+                    console.log(`Found ${activity.length} days with activity in last ${daysToShow} days`);
                     this.renderHeatmap(response.activity);
                     this.heatmapContainer.style.display = 'block';
                 } catch (error) {
@@ -793,33 +794,14 @@
 
             groupActivityByWeeks(activityData) {
                 const weeks = [];
-                let currentWeek = [];
+                const days = [...activityData];
                 
-                // Start from Monday
-                const startDate = new Date(activityData[0].date);
-                const dayOfWeek = startDate.getDay();
-                const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-                startDate.setDate(startDate.getDate() - daysToMonday);
-                
-                let currentDate = new Date(startDate);
-                let currentDataIndex = 0;
-                
-                while (currentDataIndex < activityData.length) {
-                    const dayData = activityData[currentDataIndex];
-                    const dayDate = new Date(dayData.date);
-                    
-                    if (dayDate.toDateString() === currentDate.toDateString()) {
-                        currentWeek.push(dayData);
-                        currentDataIndex++;
-                    } else {
-                        currentWeek.push({ date: currentDate.toISOString().split('T')[0], count: 0, chats: [] });
-                    }
-                    
-                    currentDate.setDate(currentDate.getDate() + 1);
-                    
-                    if (currentWeek.length === 7) {
-                        weeks.push(currentWeek);
-                        currentWeek = [];
+                // Work backwards and create weeks
+                for (let i = days.length; i > 0; i -= 7) {
+                    const start = Math.max(0, i - 7);
+                    const week = days.slice(start, i);
+                    if (week.length > 0) {
+                        weeks.unshift(week); // Add to beginning (older at left)
                     }
                 }
                 
