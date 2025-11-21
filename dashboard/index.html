@@ -658,6 +658,51 @@
             }
         }
 
+        // Router for hash-based navigation
+        class Router {
+            constructor(dashboard) {
+                this.dashboard = dashboard;
+                this.routes = {
+                    '': this.showListView.bind(this),
+                    'chat': this.showDetailView.bind(this)
+                };
+                
+                window.addEventListener('hashchange', this.handleHashChange.bind(this));
+                
+                // Handle initial load
+                this.handleHashChange();
+            }
+            
+            handleHashChange() {
+                const hash = window.location.hash.replace('#', '');
+                const parts = hash.split('/');
+                const route = parts[0];
+                
+                if (route === 'chat' && parts[1]) {
+                    this.showDetailView(parts[1]);
+                } else {
+                    this.showListView();
+                }
+            }
+            
+            navigateToDetail(chatId) {
+                window.location.hash = `chat/${chatId}`;
+            }
+            
+            navigateToList() {
+                window.location.hash = '';
+            }
+            
+            showListView() {
+                this.dashboard.hideDetailView();
+                this.dashboard.showListView();
+            }
+            
+            showDetailView(chatId) {
+                this.dashboard.showChatDetailById(chatId);
+            }
+        }
+
         // Dashboard app
         class Dashboard {
             constructor() {
@@ -671,6 +716,9 @@
                 this.initElements();
                 this.bindEvents();
                 this.loadData();
+                
+                // Initialize router
+                this.router = new Router(this);
             }
 
             initElements() {
