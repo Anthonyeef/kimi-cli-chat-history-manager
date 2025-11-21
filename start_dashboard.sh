@@ -1,49 +1,45 @@
 #!/bin/bash
 
-echo "🚀 Starting Kimi CLI Chat History Dashboard..."
+echo "🚀 Starting Kimi Chat History Dashboard..."
 echo ""
-echo "1. Starting API server..."
+
+# Kill any processes on these ports first
+echo "Cleaning up existing processes..."
+lsof -ti :8001 2>/dev/null | xargs kill -9 2>/dev/null
+lsof -ti :8080 2>/dev/null | xargs kill -9 2>/dev/null
+sleep 2
+
+# Start API server
+echo "1. Starting API server on port 8001..."
 cd server
 python3 -m uvicorn main:app --host 127.0.0.1 --port 8001 --log-level error &
-SERVER_PID=$!
-echo "   ✓ Server started (PID: $SERVER_PID)"
-echo "   API Docs: http://127.0.0.1:8001/docs"
-echo ""
-echo "2. Opening dashboard in browser..."
-sleep 2  # Wait for server to be ready
+API_PID=$!
 
-# Try to open with different commands based on OS
-if command -v open >/dev/null 2>&1; then
-    # macOS
-    open ../dashboard/index.html
-    echo "   ✓ Dashboard opened with 'open'"
-elif command -v xdg-open >/dev/null 2>&1; then
-    # Linux
-    xdg-open ../dashboard/index.html
-    echo "   ✓ Dashboard opened with 'xdg-open'"
-elif command -v start >/dev/null 2>&1; then
-    # Windows (Git Bash)
-    start ../dashboard/index.html
-    echo "   ✓ Dashboard opened with 'start'"
-else
-    echo "   ⚠ Could not open browser automatically"
-    echo "   Please manually open: dashboard/index.html"
-fi
+cd ..
+sleep 3
+
+# Start web server
+echo "2. Starting web server on port 8080..."
+cd dashboard
+python3 -m http.server 8080 &
+WEB_PID=$!
+
+cd ..
+sleep 2
 
 echo ""
-echo "3. Dashboard URLs:"
-echo "   - Dashboard: file:///Users/yifen/Workspace/kimi-chat-history/dashboard/index.html"
-echo "   - API:       http://127.0.0.1:8001"
+echo "✅ Dashboard is ready!"
 echo ""
-echo "4. Features to test:"
-echo "   ✓ Search conversations by name or content"
-echo "   ✓ Filter by workspace"
-echo "   ✓ View chat details with tool calls and think blocks"
-echo "   ✓ New: Activity heatmap showing conversation patterns"
+echo "📍 Open: http://localhost:8080/index.html"
+echo "📖 API:   http://127.0.0.1:8001/docs"
 echo ""
-echo "Press Ctrl+C to stop the server when done."
+echo "Try:"
+echo "  1. Click any chat → URL changes"
+echo "  2. Browser back → Returns to list"
+echo "  3. Use #chat/{id} to deep-link"
 echo ""
+echo "Press Ctrl+C to stop"
 
-# Keep script running until Ctrl+C
-trap "echo ''; echo 'Stopping server...'; kill $SERVER_PID 2>/dev/null; exit 0" INT
-wait $SERVER_PID
+# Wait for interrupt
+trap "kill $API_PID $WEB_PID 2>/dev/null; exit" INT
+wait

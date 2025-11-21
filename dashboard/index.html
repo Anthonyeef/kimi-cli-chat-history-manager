@@ -593,8 +593,9 @@
     <script>
         // API client
         class API {
-            constructor(baseUrl = 'http://127.0.0.1:8001') {
-                this.baseUrl = baseUrl;
+            constructor() {
+                // Use same origin as the page, with /api prefix for backend
+                this.baseUrl = window.location.origin + '/api';
             }
 
             async fetchHealth() {
@@ -686,15 +687,6 @@
                 }
             }
             
-            async showChatDetail(chat) {
-                if (!this.router) {
-                    console.error('Router not initialized!');
-                    return;
-                }
-                this.currentChat = chat;
-                this.router.navigateToDetail(chat.id);
-            }
-            
             navigateToDetail(chatId) {
                 window.location.hash = `chat/${chatId}`;
             }
@@ -725,10 +717,11 @@
                 
                 this.initElements();
                 this.bindEvents();
-                this.loadData();
                 
-                // Initialize router
+                // Initialize router BEFORE loading data
                 this.router = new Router(this);
+                
+                this.loadData();
             }
 
             initElements() {
@@ -1089,8 +1082,6 @@
                 `;
             }
 
-            }
-
 
             renderMessage(msg) {
                 const roleClass = msg.role === 'user' ? 'user' : msg.role === 'assistant' ? 'assistant' : 'tool';
@@ -1213,7 +1204,7 @@
         // Initialize dashboard when page loads
         document.addEventListener('DOMContentLoaded', () => {
             // Check if API is available
-            fetch('http://127.0.0.1:8001/api/v1/health')
+            fetch('/api/api/v1/health')
                 .then(() => {
                     new Dashboard();
                 })

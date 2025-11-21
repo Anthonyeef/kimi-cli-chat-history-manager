@@ -6,10 +6,10 @@ API_PID=$!
 cd ..
 sleep 2
 cd dashboard
-python3 -m http.server 8080 &
+python3 -m http.server 8081 &
 WEB_PID=$!
 echo ""
-echo "Dashboard: http://localhost:8080/index.html"
+echo "Dashboard: http://localhost:8081/index.html"
 echo "API Docs:  http://127.0.0.1:8001/docs"
 echo ""
 echo "Press Ctrl+C to stop both servers"

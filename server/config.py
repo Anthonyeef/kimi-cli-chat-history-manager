@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     port: int = 8001
 
     # CORS settings
-    cors_origins: List[str] = ["http://localhost:8001", "null", "file://"]
+    cors_origins: List[str] = ["http://localhost:8001", "http://localhost:8081", "null", "file://"]
 
     # Kimi data paths
     kimi_base_dir: Path = Path.home() / ".kimi"
