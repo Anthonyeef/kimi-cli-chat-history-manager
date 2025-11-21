@@ -768,6 +768,16 @@
             }
 
             // New method to load chat by ID for router
+            async showChatDetail(chat) {
+                if (!this.router) {
+                    console.error('Router not initialized!');
+                    return;
+                }
+                console.log('Navigating to chat:', chat.id);
+                this.currentChat = chat;
+                this.router.navigateToDetail(chat.id);
+            }
+
             async showChatDetailById(chatId) {
                 // First make sure chats are loaded
                 if (this.chats.length === 0) {
