@@ -130,9 +130,14 @@ async def get_chat_detail(chat_id: str):
         # Convert to Message objects
         result = []
         for msg in messages:
+            # Handle null/empty content gracefully
+            content = msg.get("content")
+            if content is None:
+                content = ""
+            
             result.append(Message(
                 role=msg.get("role", "unknown"),
-                content=msg.get("content", ""),
+                content=content,
                 tool_calls=msg.get("tool_calls"),
                 tool_call_id=msg.get("tool_call_id"),
                 timestamp=None  # We don't have timestamps in JSONL
