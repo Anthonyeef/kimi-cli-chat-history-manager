@@ -149,12 +149,16 @@ class ChatService:
                 sub_sessions = self._get_sub_sessions(session_id, session_dir)
 
                 # Create chat object
+                # Use st_birthtime (creation time) if available, fall back to st_ctime
+                stat = jsonl_file.stat()
+                created_timestamp = getattr(stat, 'st_birthtime', stat.st_ctime)
+                
                 chat = Chat(
                     id=session_id,
                     name=self._truncate(first_message, settings.max_chat_name_length),
                     workspace=workspace_path,
                     workspace_hash=workspace_hash,
-                    created=datetime.fromtimestamp(jsonl_file.stat().st_ctime),
+                    created=datetime.fromtimestamp(created_timestamp),
                     message_count=len([m for m in messages if m.get("role", "").startswith("_") is False]),
                     has_subsessions=len(sub_sessions) > 0,
                     sub_sessions=sub_sessions,
