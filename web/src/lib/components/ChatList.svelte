@@ -29,6 +29,10 @@
 		div.textContent = text;
 		return div.innerHTML;
 	}
+	
+	function getInitials(name: string): string {
+		return name.charAt(0).toUpperCase();
+	}
 </script>
 
 <div class="chat-list">
@@ -39,33 +43,35 @@
 			role="button"
 			tabindex="0"
 			on:keypress={(e) => e.key === 'Enter' && handleChatClick(chat)}
+			title={chat.name}
 		>
-			<div class="chat-header">
-				<div class="chat-title" title={chat.name}>
-					{escapeHtml(chat.name)}
-				</div>
-				<div class="chat-date">
-					{formatDate(chat.created)}
-				</div>
-			</div>
-			
-			<div class="chat-meta">
-				<span class="workspace-tag" title={chat.workspace}>
-					{getWorkspaceName(chat.workspace)}
-				</span>
-				<span class="message-count">
-					{chat.message_count} messages
-				</span>
-				{#if chat.has_subsessions && chat.sub_sessions}
-					<span class="sub-sessions">
-						{chat.sub_sessions.length} sub-sessions
+			<div class="chat-main">
+				<div class="chat-title-row">
+					<h3 class="chat-title">
+						{escapeHtml(chat.name)}
+					</h3>
+					<span class="workspace-tag" title={chat.workspace}>
+						{getWorkspaceName(chat.workspace)}
 					</span>
-				{/if}
+				</div>
+				
+				<div class="chat-meta">
+					<span class="message-info">
+						{chat.message_count} message{chat.message_count !== 1 ? 's' : ''}
+					</span>
+					<span class="chat-date" title={chat.created}>
+						{formatDate(chat.created)}
+					</span>
+					<span class="chat-id" title={chat.id}>
+						{chat.id.substring(0, 8)}...
+					</span>
+				</div>
 			</div>
 			
-			{#if chat.has_subsessions}
-				<div class="session-info">
-					Session ID: <span class="session-id">{chat.id}</span>
+			{#if chat.has_subsessions && chat.sub_sessions}
+				<div class="chat-indicator" title="Has sub-sessions">
+					<span class="indicator-dot"></span>
+					<span class="indicator-text">{chat.sub_sessions.length}</span>
 				</div>
 			{/if}
 		</div>
@@ -76,79 +82,140 @@
 	.chat-list {
 		display: flex;
 		flex-direction: column;
-		gap: 12px;
+		gap: 8px;
 	}
 	
 	.chat-item {
-		padding: 16px;
+		display: flex;
+		align-items: center;
+		padding: 14px 16px;
 		background: white;
 		border: 1px solid #e1e4e8;
-		border-radius: 8px;
+		border-radius: 12px;
 		cursor: pointer;
-		transition: all 0.2s;
+		transition: all 0.2s ease;
+		position: relative;
 	}
 	
 	.chat-item:hover {
-		border-color: #0366d6;
-		box-shadow: 0 2px 8px rgba(3, 102, 214, 0.1);
+		border-color: #d0d7de;
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 		transform: translateY(-1px);
 	}
 	
-	.chat-header {
+	.chat-item:active {
+		transform: translateY(0);
+		box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+	}
+	
+	.chat-main {
+		flex: 1;
+		min-width: 0; /* Allows text truncation to work */
+	}
+	
+	.chat-title-row {
 		display: flex;
-		justify-content: space-between;
-		align-items: flex-start;
-		margin-bottom: 8px;
+		align-items: center;
+		gap: 8px;
+		margin-bottom: 6px;
 	}
 	
 	.chat-title {
-		font-weight: 600;
-		color: #24292e;
+		font-size: 15px;
+		font-weight: 500;
+		color: #24292f;
+		margin: 0;
 		flex: 1;
-		margin-right: 12px;
-		word-break: break-word;
+		min-width: 0;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		line-height: 1.4;
 	}
 	
-	.chat-date {
-		font-size: 12px;
-		color: #666;
+	.workspace-tag {
+		font-size: 11px;
+		font-weight: 500;
+		color: #57606a;
+		background: #f6f8fa;
+		padding: 2px 8px;
+		border-radius: 12px;
 		white-space: nowrap;
+		border: 1px solid #d0d7de;
+		flex-shrink: 0;
+		max-width: 120px;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 	
 	.chat-meta {
 		display: flex;
-		flex-wrap: wrap;
-		gap: 8px;
+		align-items: center;
+		gap: 12px;
 		font-size: 12px;
+		color: #656d76;
 	}
 	
-	.workspace-tag {
-		background: #e1f5fe;
-		color: #0277bd;
-		padding: 2px 8px;
-		border-radius: 12px;
-		font-weight: 500;
+	.message-info {
+		font-weight: 400;
 	}
 	
-	.message-count {
-		color: #666;
+	.chat-date {
+		font-weight: 400;
 	}
 	
-	.sub-sessions {
-		color: #28a745;
-		background: #d4edda;
-		padding: 2px 8px;
-		border-radius: 12px;
+	.chat-id {
+		font-family: 'SFMono-Regular', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Ubuntu Mono', monospace;
+		font-size: 10px;
+		color: #8c959f;
+		background: #f6f8fa;
+		padding: 2px 6px;
+		border-radius: 4px;
+		border: 1px solid #d0d7de;
+		flex-shrink: 0;
 	}
 	
-	.session-info {
-		margin-top: 8px;
+	.chat-indicator {
+		display: flex;
+		align-items: center;
+		gap: 4px;
+		margin-left: 12px;
+		padding-left: 12px;
+		border-left: 1px solid #e1e4e8;
+	}
+	
+	.indicator-dot {
+		width: 6px;
+		height: 6px;
+		background: #2da44e;
+		border-radius: 50%;
+	}
+	
+	.indicator-text {
 		font-size: 11px;
-		color: #888;
-		font-family: monospace;
+		font-weight: 500;
+		color: #2da44e;
 	}
 	
-	.session-id {
-		font-weight: 500;
+	/* Responsive adjustments */
+	@media (max-width: 768px) {
+		.chat-title-row {
+			flex-wrap: wrap;
+		}
+		
+		.workspace-tag {
+			max-width: none;
+		}
+	}
+	
+	.chat-id {
+		font-family: 'SFMono-Regular', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Ubuntu Mono', monospace;
+		font-size: 10px;
+		color: #8c959f;
+		background: #f6f8fa;
+		padding: 2px 6px;
+		border-radius: 4px;
+		border: 1px solid #d0d7de;
+		flex-shrink: 0;
 	}
 </style>

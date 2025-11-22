@@ -1,19 +1,19 @@
 # Kimi CLI Chat History Dashboard
 
-⚡ A FastAPI-based chat history manager for Kimi CLI conversations
+A FastAPI-based chat history manager for Kimi CLI conversations
 
 > **Simplify:** View, search, and manage your Kimi CLI conversation history with a beautiful web dashboard
 
-## ✨ Features
+## Features
 
-- 🔍 **Search conversations** - Find any chat by name or message content
-- 📊 **Activity heatmap** - See your conversation patterns over time
-- 💬 **Browse all messages** - Read full conversation history
-- 🆔 **Get session IDs** - Reference any conversation
-- 🗂️ **Filter by workspace** - Organize chats by project
-- 📥 **Export to Markdown** - Save conversations for later
+- **Search conversations** - Find any chat by name or message content
+- **Activity heatmap** - See your conversation patterns over time
+- **Browse all messages** - Read full conversation history
+- **Get session IDs** - Reference any conversation
+- **Filter by workspace** - Organize chats by project
+- **Export to Markdown** - Save conversations for later
 
-## 🏗️ Architecture
+## Architecture
 
 This project consists of:
 
@@ -28,7 +28,7 @@ This project consists of:
 - Full conversation viewer
 - Export conversations to Markdown
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Step 1: Install Dependencies
 
@@ -86,7 +86,7 @@ cd web
 npm run dev
 ```
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 kimi-chat-history/
@@ -125,7 +125,7 @@ kimi-chat-history/
 └── README.md                  # This file
 ```
 
-## 📖 API Endpoints
+## API Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -136,7 +136,7 @@ kimi-chat-history/
 | GET | `/api/v1/workspaces` | List workspaces |
 | POST | `/api/v1/refresh` | Refresh chat index |
 
-## 🔧 Configuration
+## Configuration
 
 Copy the environment template:
 
@@ -160,36 +160,36 @@ KIMI_BASE_DIR=~/.kimi
 CACHE_TTL=300
 ```
 
-## 📦 Requirements
+## Requirements
 
 - Python 3.8+
 - Kimi CLI installed (generates data in `~/.kimi/`)
 
-## 🤝 Contributing
+## Contributing
 
-Phase 1 (Backend API) - ✅ **COMPLETE**
-Phase 2 (Search & Filtering) - ✅ **COMPLETE**
-Phase 3 (Activity & Analytics) - ✅ **COMPLETE**
-Phase 4 (Frontend Dashboard - SvelteKit) - ✅ **COMPLETE**
-Phase 5 (Polish & Optimization) - 🔛 Planned
-Phase 6 (Advanced Features) - 🔛 Planned
+Phase 1 (Backend API) - COMPLETE
+Phase 2 (Search & Filtering) - COMPLETE
+Phase 3 (Activity & Analytics) - COMPLETE
+Phase 4 (Frontend Dashboard - SvelteKit) - COMPLETE
+Phase 5 (Polish & Optimization) - Planned
+Phase 6 (Advanced Features) - Planned
 
 ### Development Notes
 
 The dashboard has been completely refactored from a single HTML file to a modern SvelteKit application. See `SVELTEKIT_REFACTORING.md` for technical details.
 
 **Key improvements:**
-- ✅ TypeScript for type safety
-- ✅ Component-based architecture
-- ✅ File-based routing with clean URLs
-- ✅ Reactive state management
-- ✅ Same-origin API (no CORS issues)
-- ✅ Modern developer experience
+- TypeScript for type safety
+- Component-based architecture
+- File-based routing with clean URLs
+- Reactive state management
+- Same-origin API (no CORS issues)
+- Modern developer experience
 
-## 📄 License
+## License
 
 MIT License
 
 ---
 
-Built for Kimi CLI users ❤️
+Built for Kimi CLI users

@@ -17,14 +17,22 @@ export const searchInMessages = writable(false);
 
 // Derived stores for computed values
 export const filteredChats = derived(
-	[chats, searchResults, searchQuery],
-	([$chats, $searchResults, $searchQuery]) => {
-		if ($searchQuery && $searchResults.length > 0) {
-			// Return chats that have search results
-			const chatIds = new Set($searchResults.map(r => r.chat.id));
-			return $chats.filter(chat => chatIds.has(chat.id));
+	[chats, searchResults, searchQuery, selectedWorkspace],
+	([$chats, $searchResults, $searchQuery, $selectedWorkspace]) => {
+		let filtered = $chats;
+		
+		// Apply workspace filter first
+		if ($selectedWorkspace) {
+			filtered = filtered.filter(chat => chat.workspace === $selectedWorkspace);
 		}
-		return $chats;
+		
+		// Apply search filter if there's a search query
+		if ($searchQuery && $searchResults.length > 0) {
+			const chatIds = new Set($searchResults.map(r => r.chat.id));
+			filtered = filtered.filter(chat => chatIds.has(chat.id));
+		}
+		
+		return filtered;
 	}
 );
 
