@@ -33,39 +33,57 @@ This project consists of:
 ### Step 1: Install Dependencies
 
 ```bash
+# Install Python dependencies
 cd server
 pip install -r requirements.txt
+
+# Install Node.js dependencies for the frontend
+cd ../web
+npm install
+cd ..
 ```
 
-### Step 2: Start the API Server
+### Step 2: Start the Application
 
 ```bash
-./run_server.sh
+./start_app.sh
 ```
 
-The server will automatically:
+This starts both the API server and the SvelteKit dashboard:
+- **Frontend:** http://localhost:5173
+- **API Docs:** http://localhost:8001/docs
+
+The application will automatically:
 - Index all your chats from `~/.kimi/`
 - Provide REST API endpoints
-- Run on http://127.0.0.1:8001
+- Launch the modern web dashboard
 
-### Step 3: Test the API
+### Step 3: Explore Your Chats
 
-Open your browser and visit http://127.0.0.1:8001/docs
+Open http://localhost:5173 in your browser to see your conversation history!
 
-Try these endpoints:
+**Features available:**
+- Real-time search across all conversations
+- GitHub-style activity heatmap
+- Filter by workspace
+- Click any chat to view full conversation
+- Export to Markdown
+- Copy session IDs
 
+### Alternative: Run Separately
+
+If you prefer running the servers separately:
+
+**Terminal 1 - API Server:**
 ```bash
-# List your chats
-curl http://127.0.0.1:8001/api/v1/chats?limit=10
+cd server
+python3 -m uvicorn main:app --reload
+```
 
-# Get a specific chat
-curl http://127.0.0.1:8001/api/v1/chats/{session-id}
-
-# List workspaces
-curl http://127.0.0.1:8001/api/v1/workspaces
-
-# Refresh the index
-curl -X POST http://127.0.0.1:8001/api/v1/refresh
+**Terminal 2 - Frontend:**
+```bash
+cd web
+npm run dev
 ```
 
 ## 📁 Project Structure
@@ -88,10 +106,23 @@ kimi-chat-history/
 │   └── tests/
 │       ├── test_api.py       # API tests
 │       └── test_jsonl_reader.py
-├── dashboard/                 # Web Frontend (coming soon)
-├── run_server.sh             # Server startup script
-├── .env.example              # Environment configuration
-└── README.md                # This file
+├── web/                        # SvelteKit Frontend
+│   ├── src/
+│   │   ├── lib/               # Reusable components & utilities
+│   │   │   ├── api/           # Type-safe API client
+│   │   │   ├── components/    # UI components
+│   │   │   ├── stores/        # Reactive state management
+│   │   │   └── types.ts       # TypeScript type definitions
+│   │   ├── routes/            # File-based routing
+│   │   └── app.html           # HTML template
+│   ├── static/                # Static assets
+│   ├── package.json           # Node.js dependencies
+│   ├── svelte.config.js       # SvelteKit configuration
+│   └── vite.config.js         # Vite build configuration
+├── start_app.sh               # Combined startup script
+├── SVELTEKIT_REFACTORING.md   # Technical documentation
+├── .env.example               # Environment configuration
+└── README.md                  # This file
 ```
 
 ## 📖 API Endpoints
@@ -137,11 +168,23 @@ CACHE_TTL=300
 ## 🤝 Contributing
 
 Phase 1 (Backend API) - ✅ **COMPLETE**
-Phase 2 (Search & Filtering) - 🔛 **IN PROGRESS**
-Phase 3 (Activity & Analytics) - 🔛 Planned
-Phase 4 (Frontend Dashboard) - 🔛 Planned
+Phase 2 (Search & Filtering) - ✅ **COMPLETE**
+Phase 3 (Activity & Analytics) - ✅ **COMPLETE**
+Phase 4 (Frontend Dashboard - SvelteKit) - ✅ **COMPLETE**
 Phase 5 (Polish & Optimization) - 🔛 Planned
 Phase 6 (Advanced Features) - 🔛 Planned
+
+### Development Notes
+
+The dashboard has been completely refactored from a single HTML file to a modern SvelteKit application. See `SVELTEKIT_REFACTORING.md` for technical details.
+
+**Key improvements:**
+- ✅ TypeScript for type safety
+- ✅ Component-based architecture
+- ✅ File-based routing with clean URLs
+- ✅ Reactive state management
+- ✅ Same-origin API (no CORS issues)
+- ✅ Modern developer experience
 
 ## 📄 License
 
