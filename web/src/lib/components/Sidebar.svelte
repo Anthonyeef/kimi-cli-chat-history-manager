@@ -113,6 +113,27 @@
 		gap: 20px;
 		height: 100%;
 		overflow-y: auto;
+		overflow-x: hidden;
+		scrollbar-gutter: stable;
+	}
+	
+	/* Custom scrollbar styling to minimize overlap */
+	.sidebar::-webkit-scrollbar {
+		width: 8px;
+	}
+	
+	.sidebar::-webkit-scrollbar-track {
+		background: transparent;
+	}
+	
+	.sidebar::-webkit-scrollbar-thumb {
+		background: #d1d5db;
+		border-radius: 4px;
+		border: 2px solid #f6f8fa;
+	}
+	
+	.sidebar::-webkit-scrollbar-thumb:hover {
+		background: #9ca3af;
 	}
 	
 	.search-section {
@@ -180,7 +201,9 @@
 	.heatmap-section {
 		margin-top: auto;
 		padding-top: 20px;
+		padding-right: 0;
 		border-top: 1px solid #e1e4e8;
+		overflow: visible;
 	}
 	
 	.actions-section {
